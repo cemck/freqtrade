@@ -47,32 +47,32 @@ class HossStrategy(IStrategy):
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
-    # minimal_roi = {
-    #     "0": 0.06,
-    #     "8": 0.023,
-    #     "20": 0.014,
-    #     "44": 0
-    # }
 
     # # Optimal stoploss designed for the strategy.
     # # This attribute will be overridden if the config file contains "stoploss".
     # stoploss = -0.073
 
     minimal_roi = {
-        "60": 0.0001,
-        "30": 0.0005,
-        "0": 0.001
+        "0": 0.091,
+        "5": 0.031,
+        "17": 0.014,
+        "41": 0
+    }
+
+    buy_params = {
+        "buy_rsi": 10,
+        "buy_vwap_length": 69,
     }
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.006
+    stoploss = -0.098
     # Trailing stoploss
-    trailing_stop = False
+    trailing_stop = True
+    trailing_stop_positive = 0.185
+    trailing_stop_positive_offset = 0.218
     trailing_only_offset_is_reached = False
-    trailing_stop_positive = 0.01
-    trailing_stop_positive_offset = 0.0  # Disabled / not configured
-
+    
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
 
