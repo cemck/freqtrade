@@ -124,7 +124,7 @@ class HossStrategy(IStrategy):
         :param side: 'long' or 'short' - indicating the direction of the proposed trade
         :return: A leverage amount, which is between 1.0 and max_leverage.
         """
-        return 1.0
+        return 10.0
 
     def calculateOBVRSI(self, dataframe: DataFrame) -> DataFrame:
         obv = (np.sign(dataframe['close'].diff()) * dataframe['volume']).fillna(0).cumsum()
