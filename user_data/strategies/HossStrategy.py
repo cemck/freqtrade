@@ -86,7 +86,7 @@ class HossStrategy(IStrategy):
     pd.set_option("display.precision", 3)
 
     # Strategy parameters
-    rsi_length = 5
+    buy_rsi_length = IntParameter(1, 15, default=5)
     buy_rsi = IntParameter(10, 40, default=30)
     sell_rsi = IntParameter(60, 90, default=70, space="sell")
 
@@ -132,8 +132,8 @@ class HossStrategy(IStrategy):
         max_obv_change = obv.diff().clip(lower=0)
         min_obv_change = obv.diff().clip(upper=0).abs()
 
-        up = pta.rma(max_obv_change, self.rsi_length)
-        down = pta.rma(min_obv_change, self.rsi_length)
+        up = pta.rma(max_obv_change, self.buy_rsi_length.value)
+        down = pta.rma(min_obv_change, self.buy_rsi_length.value)
         
         rsi = np.where(up == 0, 100, np.where(up == 0, 0, 100 - 100/(1 + up/down)))
 
@@ -462,10 +462,10 @@ class HossStrategy(IStrategy):
             ),
             'enter_short'] = 1
 
-        # Print the Analyzed pair
-        print(f"result for {metadata['pair']}")
-        # Inspect the last 5 rows
-        print(dataframe.tail())
+        # # Print the Analyzed pair
+        # print(f"result for {metadata['pair']}")
+        # # Inspect the last 5 rows
+        # print(dataframe.tail())
 
         return dataframe
 
@@ -496,10 +496,10 @@ class HossStrategy(IStrategy):
             ),
             'exit_short'] = 1
 
-        # Print the Analyzed pair
-        print(f"result for {metadata['pair']}")
-        # Inspect the last 5 rows
-        print(dataframe.tail())
+        # # Print the Analyzed pair
+        # print(f"result for {metadata['pair']}")
+        # # Inspect the last 5 rows
+        # print(dataframe.tail())
 
         return dataframe
     
