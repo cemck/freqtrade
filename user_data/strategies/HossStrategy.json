@@ -1,33 +1,33 @@
 {
   "strategy_name": "HossStrategy",
   "params": {
+    "stoploss": {
+      "stoploss": -0.35
+    },
     "max_open_trades": {
       "max_open_trades": 3
     },
     "buy": {
       "buy_rsi": 10,
-      "buy_vwap_length": 69
+      "buy_vwap_length": 60
     },
     "sell": {
-      "sell_rsi": 88
+      "sell_rsi": 70
     },
     "protection": {},
     "roi": {
-      "0": 0.091,
-      "5": 0.031,
-      "17": 0.014,
-      "41": 0
-    },
-    "stoploss": {
-      "stoploss": -0.098
+      "0": 0.082,
+      "3": 0.017,
+      "9": 0.003,
+      "12": 0
     },
     "trailing": {
       "trailing_stop": true,
-      "trailing_stop_positive": 0.185,
-      "trailing_stop_positive_offset": 0.218,
+      "trailing_stop_positive": 0.265,
+      "trailing_stop_positive_offset": 0.34800000000000003,
       "trailing_only_offset_is_reached": false
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2023-06-25 15:20:06.555073+00:00"
+  "export_time": "2023-06-25 15:52:12.091728+00:00"
 }

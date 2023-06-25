@@ -53,26 +53,24 @@ class HossStrategy(IStrategy):
     # stoploss = -0.073
 
     minimal_roi = {
-        "0": 0.091,
-        "5": 0.031,
-        "17": 0.014,
-        "41": 0
+        "60": 0.002,
+        "30": 0.004,
+        "0": 0.006
     }
 
-    buy_params = {
-        "buy_rsi": 10,
-        "buy_vwap_length": 69,
-    }
+    # buy_params = {
+    #     "buy_rsi": 10,
+    #     "buy_vwap_length": 69,
+    # }
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.098
+    stoploss = -0.006
     # Trailing stoploss
-    trailing_stop = True
-    trailing_stop_positive = 0.185
-    trailing_stop_positive_offset = 0.218
     trailing_only_offset_is_reached = False
-    
+    trailing_stop_positive = 0.01
+    trailing_stop_positive_offset = 0.0  # Disabled / not configured
+
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
 
@@ -89,7 +87,7 @@ class HossStrategy(IStrategy):
 
     # Strategy parameters
     rsi_length = 5
-    buy_rsi = IntParameter(10, 40, default=30, space="buy")
+    buy_rsi = IntParameter(10, 40, default=30)
     sell_rsi = IntParameter(60, 90, default=70, space="sell")
 
     buy_vwap_length = IntParameter(50, 70, default=60, space="buy")
@@ -110,6 +108,23 @@ class HossStrategy(IStrategy):
         'entry': 'GTC',
         'exit': 'GTC'
     }
+
+    def leverage(self, pair: str, current_time: datetime, current_rate: float,
+                 proposed_leverage: float, max_leverage: float, entry_tag: Optional[str], side: str,
+                 **kwargs) -> float:
+        """
+        Customize leverage for each new trade. This method is only called in futures mode.
+
+        :param pair: Pair that's currently analyzed
+        :param current_time: datetime object, containing the current datetime
+        :param current_rate: Rate, calculated based on pricing settings in exit_pricing.
+        :param proposed_leverage: A leverage proposed by the bot.
+        :param max_leverage: Max leverage allowed on this pair
+        :param entry_tag: Optional entry_tag (buy_tag) if provided with the buy signal.
+        :param side: 'long' or 'short' - indicating the direction of the proposed trade
+        :return: A leverage amount, which is between 1.0 and max_leverage.
+        """
+        return 1.0
 
     def calculateOBVRSI(self, dataframe: DataFrame) -> DataFrame:
         obv = (np.sign(dataframe['close'].diff()) * dataframe['volume']).fillna(0).cumsum()
