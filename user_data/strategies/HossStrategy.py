@@ -40,28 +40,38 @@ class HossStrategy(IStrategy):
     INTERFACE_VERSION = 3
 
     # Optimal timeframe for the strategy.
-    timeframe = '5m'
+    timeframe = '1m'
 
     # Can this strategy go short?
     can_short: bool = False
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
+    # minimal_roi = {
+    #     "0": 0.06,
+    #     "8": 0.023,
+    #     "20": 0.014,
+    #     "44": 0
+    # }
+
+    # # Optimal stoploss designed for the strategy.
+    # # This attribute will be overridden if the config file contains "stoploss".
+    # stoploss = -0.073
+
     minimal_roi = {
-        "60": 0.01,
-        "30": 0.02,
-        "0": 0.04
+        "60": 0.0001,
+        "30": 0.0005,
+        "0": 0.001
     }
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.10
-
+    stoploss = -0.006
     # Trailing stoploss
     trailing_stop = False
-    # trailing_only_offset_is_reached = False
-    # trailing_stop_positive = 0.01
-    # trailing_stop_positive_offset = 0.0  # Disabled / not configured
+    trailing_only_offset_is_reached = False
+    trailing_stop_positive = 0.01
+    trailing_stop_positive_offset = 0.0  # Disabled / not configured
 
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
@@ -72,18 +82,27 @@ class HossStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 30
+    startup_candle_count: int = 60
+
+    # Set precision to 3
+    pd.set_option("display.precision", 3)
 
     # Strategy parameters
+    rsi_length = 5
     buy_rsi = IntParameter(10, 40, default=30, space="buy")
     sell_rsi = IntParameter(60, 90, default=70, space="sell")
 
+    buy_vwap_length = IntParameter(50, 70, default=60, space="buy")
+    vwap_source = 'close'
+
+    vwap_dev_type = "Standard Deviation"
+
     # Optional order type mapping.
     order_types = {
-        'entry': 'limit',
-        'exit': 'limit',
+        'entry': 'market',
+        'exit': 'market',
         'stoploss': 'market',
-        'stoploss_on_exchange': False
+        'stoploss_on_exchange': True
     }
 
     # Optional order time in force.
@@ -91,23 +110,62 @@ class HossStrategy(IStrategy):
         'entry': 'GTC',
         'exit': 'GTC'
     }
-    
+
+    def calculateOBVRSI(self, dataframe: DataFrame) -> DataFrame:
+        obv = (np.sign(dataframe['close'].diff()) * dataframe['volume']).fillna(0).cumsum()
+
+        max_obv_change = obv.diff().clip(lower=0)
+        min_obv_change = obv.diff().clip(upper=0).abs()
+
+        up = pta.rma(max_obv_change, self.rsi_length)
+        down = pta.rma(min_obv_change, self.rsi_length)
+        
+        rsi = np.where(up == 0, 100, np.where(up == 0, 0, 100 - 100/(1 + up/down)))
+
+        return rsi
+
+    def calculateVwMean(self, dataframe: DataFrame) -> DataFrame:
+        rolling_vwmean = (dataframe[self.vwap_source] * dataframe['volume']).rolling(window=self.buy_vwap_length.value).sum() / dataframe['volume'].rolling(window=self.buy_vwap_length.value).sum()
+
+        return rolling_vwmean
+
+    def calculateVwStdDev(self, dataframe: DataFrame) -> DataFrame:
+        rolling_vwap_std = dataframe[self.vwap_source].rolling(window=self.buy_vwap_length.value).apply(
+            lambda x: np.sqrt(np.average((x - np.average(x, weights=dataframe.loc[x.index, 'volume']))**2, weights=dataframe.loc[x.index, 'volume']))
+        )
+        upper_dev = dataframe['vw_mean'] + rolling_vwap_std * 2
+        lower_dev = dataframe['vw_mean'] - rolling_vwap_std * 2
+
+        return upper_dev, lower_dev
+
+    def calculateVwAvDev(self, dataframe: DataFrame) -> DataFrame:
+        rolling_vwap_av_std = dataframe[self.vwap_source].rolling(window=self.buy_vwap_length.value).apply(
+            lambda x: np.average(np.abs((x - np.average(x, weights=dataframe.loc[x.index, 'volume']))), weights=dataframe.loc[x.index, 'volume'])
+        )
+        upper_dev = dataframe['vw_mean'] + rolling_vwap_av_std * 2
+        lower_dev = dataframe['vw_mean'] - rolling_vwap_av_std * 2
+
+        return upper_dev, lower_dev
+
     @property
     def plot_config(self):
         return {
             # Main plot indicators (Moving averages, ...)
             'main_plot': {
-                'tema': {},
-                'sar': {'color': 'white'},
+                # 'tema': {},
+                # 'sar': {'color': 'white'},
+                'vw_mean': {'color': 'grey'},
+                'upper_dev': {'color': 'red'},
+                'lower_dev': {'color': 'green'},
             },
             'subplots': {
                 # Subplots - each dict defines one additional plot
-                "MACD": {
-                    'macd': {'color': 'blue'},
-                    'macdsignal': {'color': 'orange'},
-                },
-                "RSI": {
-                    'rsi': {'color': 'red'},
+                # "MACD": {
+                #     'macd': {'color': 'blue'},
+                #     'macdsignal': {'color': 'orange'},
+                # },
+                "OBV RSI": {
+                    'obv_rsi': {'color': 'black'},
                 }
             }
         }
@@ -141,7 +199,7 @@ class HossStrategy(IStrategy):
         # ------------------------------------
 
         # ADX
-        dataframe['adx'] = ta.ADX(dataframe)
+        # dataframe['adx'] = ta.ADX(dataframe)
 
         # # Plus Directional Indicator / Movement
         # dataframe['plus_dm'] = ta.PLUS_DM(dataframe)
@@ -180,7 +238,21 @@ class HossStrategy(IStrategy):
         # dataframe['cci'] = ta.CCI(dataframe)
 
         # RSI
-        dataframe['rsi'] = ta.RSI(dataframe)
+        # dataframe['rsi'] = ta.RSI(dataframe)
+
+        # OBV RSI
+        dataframe['obv_rsi'] = self.calculateOBVRSI(dataframe)
+
+        # Volume Weighted Mean
+        dataframe['vw_mean'] = self.calculateVwMean(dataframe)
+
+        # VWAP Standard Deviation
+        if self.vwap_dev_type == "Standard Deviation":
+            dataframe['upper_dev'], dataframe['lower_dev'] = self.calculateVwStdDev(dataframe)
+
+        # VWAP Average Deviation
+        if self.vwap_dev_type == "Average Deviation":
+            dataframe['upper_dev'], dataframe['lower_dev'] = self.calculateVwAvDev(dataframe)
 
         # # Inverse Fisher transform on RSI: values [-1.0, 1.0] (https://goo.gl/2JGGoy)
         # rsi = 0.1 * (dataframe['rsi'] - 50)
@@ -195,9 +267,9 @@ class HossStrategy(IStrategy):
         # dataframe['slowk'] = stoch['slowk']
 
         # Stochastic Fast
-        stoch_fast = ta.STOCHF(dataframe)
-        dataframe['fastd'] = stoch_fast['fastd']
-        dataframe['fastk'] = stoch_fast['fastk']
+        # stoch_fast = ta.STOCHF(dataframe)
+        # dataframe['fastd'] = stoch_fast['fastd']
+        # dataframe['fastk'] = stoch_fast['fastk']
 
         # # Stochastic RSI
         # Please read https://github.com/freqtrade/freqtrade/issues/2961 before using this.
@@ -207,13 +279,13 @@ class HossStrategy(IStrategy):
         # dataframe['fastk_rsi'] = stoch_rsi['fastk']
 
         # MACD
-        macd = ta.MACD(dataframe)
-        dataframe['macd'] = macd['macd']
-        dataframe['macdsignal'] = macd['macdsignal']
-        dataframe['macdhist'] = macd['macdhist']
+        # macd = ta.MACD(dataframe)
+        # dataframe['macd'] = macd['macd']
+        # dataframe['macdsignal'] = macd['macdsignal']
+        # dataframe['macdhist'] = macd['macdhist']
 
         # MFI
-        dataframe['mfi'] = ta.MFI(dataframe)
+        # dataframe['mfi'] = ta.MFI(dataframe)
 
         # # ROC
         # dataframe['roc'] = ta.ROC(dataframe)
@@ -222,17 +294,17 @@ class HossStrategy(IStrategy):
         # ------------------------------------
 
         # Bollinger Bands
-        bollinger = qtpylib.bollinger_bands(qtpylib.typical_price(dataframe), window=20, stds=2)
-        dataframe['bb_lowerband'] = bollinger['lower']
-        dataframe['bb_middleband'] = bollinger['mid']
-        dataframe['bb_upperband'] = bollinger['upper']
-        dataframe["bb_percent"] = (
-            (dataframe["close"] - dataframe["bb_lowerband"]) /
-            (dataframe["bb_upperband"] - dataframe["bb_lowerband"])
-        )
-        dataframe["bb_width"] = (
-            (dataframe["bb_upperband"] - dataframe["bb_lowerband"]) / dataframe["bb_middleband"]
-        )
+        # bollinger = qtpylib.bollinger_bands(qtpylib.typical_price(dataframe), window=20, stds=2)
+        # dataframe['bb_lowerband'] = bollinger['lower']
+        # dataframe['bb_middleband'] = bollinger['mid']
+        # dataframe['bb_upperband'] = bollinger['upper']
+        # dataframe["bb_percent"] = (
+        #     (dataframe["close"] - dataframe["bb_lowerband"]) /
+        #     (dataframe["bb_upperband"] - dataframe["bb_lowerband"])
+        # )
+        # dataframe["bb_width"] = (
+        #     (dataframe["bb_upperband"] - dataframe["bb_lowerband"]) / dataframe["bb_middleband"]
+        # )
 
         # Bollinger Bands - Weighted (EMA based instead of SMA)
         # weighted_bollinger = qtpylib.weighted_bollinger_bands(
@@ -266,17 +338,17 @@ class HossStrategy(IStrategy):
         # dataframe['sma100'] = ta.SMA(dataframe, timeperiod=100)
 
         # Parabolic SAR
-        dataframe['sar'] = ta.SAR(dataframe)
+        # dataframe['sar'] = ta.SAR(dataframe)
 
         # TEMA - Triple Exponential Moving Average
-        dataframe['tema'] = ta.TEMA(dataframe, timeperiod=9)
+        # dataframe['tema'] = ta.TEMA(dataframe, timeperiod=9)
 
         # Cycle Indicator
         # ------------------------------------
         # Hilbert Transform Indicator - SineWave
-        hilbert = ta.HT_SINE(dataframe)
-        dataframe['htsine'] = hilbert['sine']
-        dataframe['htleadsine'] = hilbert['leadsine']
+        # hilbert = ta.HT_SINE(dataframe)
+        # dataframe['htsine'] = hilbert['sine']
+        # dataframe['htleadsine'] = hilbert['leadsine']
 
         # Pattern Recognition - Bullish candlestick patterns
         # ------------------------------------
@@ -354,23 +426,31 @@ class HossStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                (qtpylib.crossed_above(dataframe['rsi'], self.buy_rsi.value)) &  # Signal: RSI crosses above buy_rsi
-                (dataframe['tema'] <= dataframe['bb_middleband']) &  # Guard: tema below BB middle
-                (dataframe['tema'] > dataframe['tema'].shift(1)) &  # Guard: tema is raising
+                # (qtpylib.crossed_above(dataframe['obv_rsi'], self.buy_rsi.value)) &  # Signal: OBV RSI crosses above buy_rsi
+                (dataframe['obv_rsi'] <= self.buy_rsi.value) &
+                (qtpylib.crossed_below(dataframe['close'], dataframe['lower_dev'])) &
+                # (dataframe['tema'] <= dataframe['bb_middleband']) &  # Guard: tema below BB middle
+                # (dataframe['tema'] > dataframe['tema'].shift(1)) &  # Guard: tema is raising
                 (dataframe['volume'] > 0)  # Make sure Volume is not 0
             ),
             'enter_long'] = 1
+
         # Uncomment to use shorts (Only used in futures/margin mode. Check the documentation for more info)
-        """
         dataframe.loc[
             (
-                (qtpylib.crossed_above(dataframe['rsi'], self.sell_rsi.value)) &  # Signal: RSI crosses above sell_rsi
-                (dataframe['tema'] > dataframe['bb_middleband']) &  # Guard: tema above BB middle
-                (dataframe['tema'] < dataframe['tema'].shift(1)) &  # Guard: tema is falling
+                # (qtpylib.crossed_above(dataframe['obv_rsi'], self.sell_rsi.value)) &  # Signal: OBV RSI crosses above sell_rsi
+                (dataframe['obv_rsi'] >= self.sell_rsi.value) &
+                (qtpylib.crossed_above(dataframe['close'], dataframe['upper_dev'])) &
+                # (dataframe['tema'] > dataframe['bb_middleband']) &  # Guard: tema above BB middle
+                # (dataframe['tema'] < dataframe['tema'].shift(1)) &  # Guard: tema is falling
                 (dataframe['volume'] > 0)  # Make sure Volume is not 0
             ),
             'enter_short'] = 1
-        """
+
+        # Print the Analyzed pair
+        print(f"result for {metadata['pair']}")
+        # Inspect the last 5 rows
+        print(dataframe.tail())
 
         return dataframe
 
@@ -383,22 +463,28 @@ class HossStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                (qtpylib.crossed_above(dataframe['rsi'], self.sell_rsi.value)) &  # Signal: RSI crosses above sell_rsi
-                (dataframe['tema'] > dataframe['bb_middleband']) &  # Guard: tema above BB middle
-                (dataframe['tema'] < dataframe['tema'].shift(1)) &  # Guard: tema is falling
+                # (qtpylib.crossed_above(dataframe['obv_rsi'], self.sell_rsi.value)) &  # Signal: OBV RSI crosses above sell_rsi
+                # (dataframe['tema'] > dataframe['bb_middleband']) &  # Guard: tema above BB middle
+                # (dataframe['tema'] < dataframe['tema'].shift(1)) &  # Guard: tema is falling
+                (qtpylib.crossed_above(dataframe['close'], dataframe['vw_mean'])) &
                 (dataframe['volume'] > 0)  # Make sure Volume is not 0
             ),
             'exit_long'] = 1
         # Uncomment to use shorts (Only used in futures/margin mode. Check the documentation for more info)
-        """
         dataframe.loc[
             (
-                (qtpylib.crossed_above(dataframe['rsi'], self.buy_rsi.value)) &  # Signal: RSI crosses above buy_rsi
-                (dataframe['tema'] <= dataframe['bb_middleband']) &  # Guard: tema below BB middle
-                (dataframe['tema'] > dataframe['tema'].shift(1)) &  # Guard: tema is raising
+                # (qtpylib.crossed_above(dataframe['obv_rsi'], self.buy_rsi.value)) &  # Signal: OBV RSI crosses above buy_rsi
+                # (dataframe['tema'] <= dataframe['bb_middleband']) &  # Guard: tema below BB middle
+                # (dataframe['tema'] > dataframe['tema'].shift(1)) &  # Guard: tema is raising
+                (qtpylib.crossed_below(dataframe['close'], dataframe['vw_mean'])) &
                 (dataframe['volume'] > 0)  # Make sure Volume is not 0
             ),
             'exit_short'] = 1
-        """
+
+        # Print the Analyzed pair
+        print(f"result for {metadata['pair']}")
+        # Inspect the last 5 rows
+        print(dataframe.tail())
+
         return dataframe
     
