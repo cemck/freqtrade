@@ -9,25 +9,25 @@
     },
     "buy": {
       "buy_rsi": 12,
-      "buy_vwap_length": 55
+      "buy_vwap_length": 62
     },
     "sell": {
       "sell_rsi": 70
     },
     "protection": {},
     "roi": {
-      "0": 0.07,
-      "7": 0.033,
-      "11": 0.009,
-      "28": 0
+      "0": 0.056999999999999995,
+      "4": 0.019,
+      "14": 0.011,
+      "35": 0
     },
     "trailing": {
       "trailing_stop": true,
-      "trailing_stop_positive": 0.192,
-      "trailing_stop_positive_offset": 0.254,
-      "trailing_only_offset_is_reached": false
+      "trailing_stop_positive": 0.105,
+      "trailing_stop_positive_offset": 0.2,
+      "trailing_only_offset_is_reached": true
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2023-06-25 15:56:28.388683+00:00"
+  "export_time": "2023-06-25 16:01:13.136381+00:00"
 }
