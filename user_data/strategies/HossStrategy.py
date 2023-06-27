@@ -53,9 +53,7 @@ class HossStrategy(IStrategy):
     # stoploss = -0.073
 
     minimal_roi = {
-        "60": 0.002,
-        "30": 0.004,
-        "0": 0.006
+        "0": 100
     }
 
     # buy_params = {
@@ -67,8 +65,9 @@ class HossStrategy(IStrategy):
     # This attribute will be overridden if the config file contains "stoploss".
     stoploss = -0.006
     # Trailing stoploss
+    trailing_stop = True
     trailing_only_offset_is_reached = False
-    trailing_stop_positive = 0.01
+    trailing_stop_positive = 0.0001
     trailing_stop_positive_offset = 0.0  # Disabled / not configured
 
     # Run "populate_indicators()" only for new candle.
@@ -124,7 +123,7 @@ class HossStrategy(IStrategy):
         :param side: 'long' or 'short' - indicating the direction of the proposed trade
         :return: A leverage amount, which is between 1.0 and max_leverage.
         """
-        return 100.0
+        return 10.0
 
     def calculateOBVRSI(self, dataframe: DataFrame) -> DataFrame:
         obv = (np.sign(dataframe['close'].diff()) * dataframe['volume']).fillna(0).cumsum()

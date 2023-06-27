@@ -4,31 +4,31 @@
     "stoploss": {
       "stoploss": -0.35
     },
+    "trailing": {
+      "trailing_stop": true,
+      "trailing_stop_positive": 0.206,
+      "trailing_stop_positive_offset": 0.23,
+      "trailing_only_offset_is_reached": true
+    },
     "max_open_trades": {
       "max_open_trades": 3
     },
     "buy": {
-      "buy_rsi": 12,
-      "buy_rsi_length": 2,
-      "buy_vwap_length": 62
+      "buy_rsi": 10,
+      "buy_rsi_length": 5,
+      "buy_vwap_length": 64
     },
     "sell": {
       "sell_rsi": 70
     },
     "protection": {},
     "roi": {
-      "0": 0.033,
-      "8": 0.028,
-      "19": 0.007,
-      "40": 0
-    },
-    "trailing": {
-      "trailing_stop": true,
-      "trailing_stop_positive": 0.206,
-      "trailing_stop_positive_offset": 0.22999999999999998,
-      "trailing_only_offset_is_reached": true
+      "0": 0.087,
+      "8": 0.04,
+      "20": 0.015,
+      "39": 0
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2023-06-25 17:19:01.904674+00:00"
+  "export_time": "2023-06-27 15:19:34.811653+00:00"
 }
